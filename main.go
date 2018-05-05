@@ -35,23 +35,14 @@ func main() {
 		panic("Failed to build stream")
 	}
 
+	context := Context {
+		client,
+		time.Now().AddDate(-1, 0, 0),
+	}
+
 	demux := twitter.NewSwitchDemux()
-
-	latestRetweet := time.Now().AddDate(-1, 0, 0)
 	demux.Tweet = func(tweet *twitter.Tweet) {
-		if strings.HasPrefix(tweet.Text, "RT ") {
-			return
-		}
-
-		duration := time.Since(latestRetweet)
-		// 10min + random between 0 and 20min
-		if duration.Minutes() >= (10 + rand.Float64()*20) {
-			fmt.Printf("Retweet: %s\n", tweet.Text)
-			client.Statuses.Retweet(tweet.ID, &twitter.StatusRetweetParams{
-				ID: tweet.ID,
-			})
-			latestRetweet = time.Now()
-		}
+		handleTweet(tweet, &context)
 	}
 
 	demux.HandleChan(stream.Messages)
@@ -71,4 +62,25 @@ func getenv(key string) string {
 		panic(fmt.Sprintf("Missing environment variable: %s", key))
 	}
 	return value
+}
+
+type Context struct {
+	Client *twitter.Client
+	LastRetweet time.Time
+}
+
+func handleTweet (tweet *twitter.Tweet, context *Context) {
+	if strings.HasPrefix(tweet.Text, "RT ") {
+		return
+	}
+
+	duration := time.Since(context.LastRetweet)
+	// 10min + random between 0 and 20min
+	if duration.Minutes() >= (10 + rand.Float64()*20) {
+		fmt.Printf("Retweet: %s\n", tweet.Text)
+		context.Client.Statuses.Retweet(tweet.ID, &twitter.StatusRetweetParams{
+			ID: tweet.ID,
+		})
+		context.LastRetweet = time.Now()
+	}
 }
