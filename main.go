@@ -52,6 +52,10 @@ func main() {
 		logStats(&context)
 	})
 
+	go scheduleEvery(30*time.Minute, func(t time.Time) {
+		stripFollowees(&context)
+	})
+
 	demux := twitter.NewSwitchDemux()
 	demux.Tweet = func(tweet *twitter.Tweet) {
 		handleTweet(tweet, &context)
@@ -180,4 +184,33 @@ func follow(tweet *twitter.Tweet, context *Context) {
 		UserID:     tweet.User.ID,
 		ScreenName: tweet.User.ScreenName,
 	})
+}
+
+func stripFollowees(context *Context) {
+	followerCount := countFollowers(context)
+
+	// fixme Handle pages
+	friends, _, _ := context.Client.Friends.IDs(&twitter.FriendIDParams{})
+	friendIds := friends.IDs
+
+	shuffle(friendIds)
+
+	for i := 0; i < len(friendIds)-followerCount; i++ {
+		context.Client.Friendships.Destroy(&twitter.FriendshipDestroyParams{
+			UserID: friendIds[i],
+		})
+	}
+}
+
+func countFollowers(context *Context) int {
+	// fixme Handle pages
+	followers, _, _ := context.Client.Followers.IDs(&twitter.FollowerIDParams{})
+	return len(followers.IDs)
+}
+
+func shuffle(slice []int64) {
+	for i := range slice {
+		j := rand.Intn(i + 1)
+		slice[i], slice[j] = slice[j], slice[i]
+	}
 }
