@@ -39,15 +39,18 @@ func main() {
 		Client:      client,
 		LastRetweet: time.Now().AddDate(-1, 0, 0),
 		LastComment: time.Now().AddDate(-1, 0, 0),
-		Stats:       Stats{
+		Stats: Stats{
 			Comments: 0,
 			Favorite: 0,
 			Follow:   0,
 			Ignore:   0,
 			Retweets: 0,
-
 		},
 	}
+
+	go scheduleEvery(30*time.Second, func(t time.Time) {
+		logStats(&context)
+	})
 
 	demux := twitter.NewSwitchDemux()
 	demux.Tweet = func(tweet *twitter.Tweet) {
@@ -73,6 +76,13 @@ func getenv(key string) string {
 	return value
 }
 
+func scheduleEvery(d time.Duration, f func(time.Time)) {
+	f(time.Now())
+	for x := range time.Tick(d) {
+		f(x)
+	}
+}
+
 type Context struct {
 	Client      *twitter.Client
 	LastRetweet time.Time
@@ -88,17 +98,24 @@ type Stats struct {
 	Ignore   int32
 }
 
+func logStats(context *Context) {
+	log.Printf(
+		"Stats { Retweets: %d, Comments: %d, Favorite: %d, Follow: %d, Ignore: %d }",
+		context.Stats.Retweets, context.Stats.Comments, context.Stats.Favorite, context.Stats.Follow, context.Stats.Ignore)
+}
+
 func handleTweet(tweet *twitter.Tweet, context *Context) {
 	if strings.HasPrefix(tweet.Text, "RT ") {
-		log.Printf("Ignore RT: %s", tweet.Text)
+		context.Stats.Ignore += 1
 		return
 	}
 	if tweet.InReplyToStatusID == 0 {
-		log.Printf("Ignore reply: %s", tweet.Text)
+		context.Stats.Ignore += 1
 		return
 	}
 
-	switch rand.Intn(4) {
+	processId := rand.Intn(4)
+	switch  processId {
 	case 0:
 		retweet(tweet, context)
 	case 1:
@@ -116,7 +133,7 @@ func retweet(tweet *twitter.Tweet, context *Context) {
 	duration := time.Since(context.LastRetweet)
 	// 10min + random between 0 and 20min
 	if duration.Minutes() >= (10 + rand.Float64()*20) {
-		log.Printf("Retweet: %s\n", tweet.Text)
+		context.Stats.Retweets += 1
 		context.Client.Statuses.Retweet(tweet.ID, &twitter.StatusRetweetParams{
 			ID: tweet.ID,
 		})
@@ -133,11 +150,11 @@ var Comments = []string{
 
 func comment(tweet *twitter.Tweet, context *Context) {
 	duration := time.Since(context.LastComment)
-	context.Stats.Comments += 1
+
 	// 10min + random between 0 and 5min
 	if duration.Minutes() >= (10 + rand.Float64()*5) {
+		context.Stats.Comments += 1
 		comment := Comments[ rand.Intn(len(Comments))]
-		log.Printf("Comment: '%s' to '%s'\n", comment, tweet.Text)
 		context.Client.Statuses.Update(comment, &twitter.StatusUpdateParams{
 			Status:            comment,
 			InReplyToStatusID: tweet.ID,
@@ -147,7 +164,6 @@ func comment(tweet *twitter.Tweet, context *Context) {
 }
 
 func favorite(tweet *twitter.Tweet, context *Context) {
-	log.Printf("Favorite: %s\n", tweet.Text)
 	context.Stats.Favorite += 1
 	context.Client.Favorites.Create(&twitter.FavoriteCreateParams{
 		ID: tweet.ID,
@@ -155,7 +171,6 @@ func favorite(tweet *twitter.Tweet, context *Context) {
 }
 
 func follow(tweet *twitter.Tweet, context *Context) {
-	log.Printf("Follow: %s\n", tweet.User.ScreenName)
 	context.Stats.Follow += 1
 	context.Client.Friendships.Create(&twitter.FriendshipCreateParams{
 		UserID:     tweet.User.ID,
