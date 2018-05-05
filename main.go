@@ -26,7 +26,7 @@ func main() {
 	client := twitter.NewClient(httpClient)
 
 	params := &twitter.StreamFilterParams{
-		Track:         []string{"goland"},
+		Track:         []string{"blockchain"},
 		StallWarnings: twitter.Bool(true),
 	}
 
@@ -39,6 +39,14 @@ func main() {
 		Client:      client,
 		LastRetweet: time.Now().AddDate(-1, 0, 0),
 		LastComment: time.Now().AddDate(-1, 0, 0),
+		Stats:       Stats{
+			Comments: 0,
+			Favorite: 0,
+			Follow:   0,
+			Ignore:   0,
+			Retweets: 0,
+
+		},
 	}
 
 	demux := twitter.NewSwitchDemux()
@@ -69,6 +77,15 @@ type Context struct {
 	Client      *twitter.Client
 	LastRetweet time.Time
 	LastComment time.Time
+	Stats       Stats
+}
+
+type Stats struct {
+	Retweets int32
+	Comments int32
+	Favorite int32
+	Follow   int32
+	Ignore   int32
 }
 
 func handleTweet(tweet *twitter.Tweet, context *Context) {
@@ -81,13 +98,15 @@ func handleTweet(tweet *twitter.Tweet, context *Context) {
 		return
 	}
 
-	switch rand.Intn(3) {
+	switch rand.Intn(4) {
 	case 0:
 		retweet(tweet, context)
 	case 1:
 		comment(tweet, context)
 	case 2:
 		favorite(tweet, context)
+	case 3:
+		follow(tweet, context)
 	default:
 		favorite(tweet, context)
 	}
@@ -114,6 +133,7 @@ var Comments = []string{
 
 func comment(tweet *twitter.Tweet, context *Context) {
 	duration := time.Since(context.LastComment)
+	context.Stats.Comments += 1
 	// 10min + random between 0 and 5min
 	if duration.Minutes() >= (10 + rand.Float64()*5) {
 		comment := Comments[ rand.Intn(len(Comments))]
@@ -128,7 +148,17 @@ func comment(tweet *twitter.Tweet, context *Context) {
 
 func favorite(tweet *twitter.Tweet, context *Context) {
 	log.Printf("Favorite: %s\n", tweet.Text)
+	context.Stats.Favorite += 1
 	context.Client.Favorites.Create(&twitter.FavoriteCreateParams{
 		ID: tweet.ID,
+	})
+}
+
+func follow(tweet *twitter.Tweet, context *Context) {
+	log.Printf("Follow: %s\n", tweet.User.ScreenName)
+	context.Stats.Follow += 1
+	context.Client.Friendships.Create(&twitter.FriendshipCreateParams{
+		UserID:     tweet.User.ID,
+		ScreenName: tweet.User.ScreenName,
 	})
 }
