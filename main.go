@@ -35,7 +35,7 @@ func main() {
 		panic("Failed to build stream")
 	}
 
-	context := Context {
+	context := Context{
 		client,
 		time.Now().AddDate(-1, 0, 0),
 	}
@@ -65,15 +65,23 @@ func getenv(key string) string {
 }
 
 type Context struct {
-	Client *twitter.Client
+	Client      *twitter.Client
 	LastRetweet time.Time
 }
 
-func handleTweet (tweet *twitter.Tweet, context *Context) {
+func handleTweet(tweet *twitter.Tweet, context *Context) {
 	if strings.HasPrefix(tweet.Text, "RT ") {
 		return
 	}
 
+	switch rand.Intn(1) {
+	case 0:
+		retweet(tweet, context)
+	default:
+	}
+}
+
+func retweet(tweet *twitter.Tweet, context *Context) {
 	duration := time.Since(context.LastRetweet)
 	// 10min + random between 0 and 20min
 	if duration.Minutes() >= (10 + rand.Float64()*20) {
