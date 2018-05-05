@@ -109,7 +109,7 @@ func handleTweet(tweet *twitter.Tweet, context *Context) {
 		context.Stats.Ignore += 1
 		return
 	}
-	if tweet.InReplyToStatusID == 0 {
+	if tweet.InReplyToStatusID != 0 {
 		context.Stats.Ignore += 1
 		return
 	}
