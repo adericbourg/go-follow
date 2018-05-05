@@ -159,9 +159,8 @@ func comment(tweet *twitter.Tweet, context *Context) {
 	// 10min + random between 0 and 5min
 	if duration.Minutes() >= (10 + rand.Float64()*5) {
 		context.Stats.Comments += 1
-		comment := Comments[ rand.Intn(len(Comments))]
+		comment := fmt.Sprintf("@%s %s", tweet.User.ScreenName, Comments[ rand.Intn(len(Comments))])
 		context.Client.Statuses.Update(comment, &twitter.StatusUpdateParams{
-			Status:            comment,
 			InReplyToStatusID: tweet.ID,
 		})
 		context.LastComment = time.Now()
