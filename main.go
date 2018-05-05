@@ -45,14 +45,14 @@ func main() {
 		handleTweet(tweet, &context)
 	}
 
+	log.Println("Starting stream processing")
 	demux.HandleChan(stream.Messages)
 
 	// Wait for SIGINT and SIGTERM
 	ch := make(chan os.Signal)
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
-	log.Println(<-ch)
 
-	fmt.Println("Exiting")
+	log.Println("Exiting")
 	stream.Stop()
 }
 
@@ -77,7 +77,7 @@ func handleTweet (tweet *twitter.Tweet, context *Context) {
 	duration := time.Since(context.LastRetweet)
 	// 10min + random between 0 and 20min
 	if duration.Minutes() >= (10 + rand.Float64()*20) {
-		fmt.Printf("Retweet: %s\n", tweet.Text)
+		log.Printf("Retweet: %s\n", tweet.Text)
 		context.Client.Statuses.Retweet(tweet.ID, &twitter.StatusRetweetParams{
 			ID: tweet.ID,
 		})
