@@ -146,6 +146,11 @@ var Comments = []string{
 	"Thank you for this :)",
 	"Interesting. Thanks for sharing!",
 	"👍",
+	"Great!",
+	"Interesting point. Could you elaborate?",
+	"How can I get more details about this?",
+	"nice :)",
+	"Can you tell us more about that?",
 }
 
 func comment(tweet *twitter.Tweet, context *Context) {
