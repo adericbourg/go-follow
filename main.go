@@ -220,6 +220,7 @@ func postLink(url string, context *Context) {
 		context.Stats.Links += 1
 		status := fmt.Sprintf("%s\n%s #blockchain", title, url)
 		context.Client.Statuses.Update(status, &twitter.StatusUpdateParams{})
+		context.LastLink = time.Now()
 	}
 }
 
