@@ -39,11 +39,14 @@ func main() {
 		panic("Failed to build stream")
 	}
 
+	currentUser, _, _ := client.Accounts.VerifyCredentials(&twitter.AccountVerifyParams{})
+
 	context := Context{
 		Client:      client,
+		User:        currentUser,
 		LastRetweet: time.Now().AddDate(-1, 0, 0),
 		LastComment: time.Now().AddDate(-1, 0, 0),
-		LastLink: time.Now().AddDate(-1, 0, 0),
+		LastLink:    time.Now().AddDate(-1, 0, 0),
 		Stats: Stats{
 			Comments: 0,
 			Favorite: 0,
@@ -95,9 +98,10 @@ func scheduleEvery(d time.Duration, f func(time.Time)) {
 
 type Context struct {
 	Client      *twitter.Client
+	User        *twitter.User
 	LastRetweet time.Time
 	LastComment time.Time
-	LastLink time.Time
+	LastLink    time.Time
 	Stats       Stats
 }
 
@@ -117,6 +121,9 @@ func logStats(context *Context) {
 }
 
 func handleTweet(tweet *twitter.Tweet, context *Context) {
+	if tweet.User.ID == context.User.ID {
+		return
+	}
 	if strings.HasPrefix(tweet.Text, "RT ") {
 		context.Stats.Ignore += 1
 		return
