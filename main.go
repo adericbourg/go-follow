@@ -11,6 +11,10 @@ import (
 	"strings"
 	"math/rand"
 	"time"
+	"mvdan.cc/xurls"
+	"encoding/xml"
+	"net/http"
+	"io/ioutil"
 )
 
 func main() {
@@ -39,11 +43,13 @@ func main() {
 		Client:      client,
 		LastRetweet: time.Now().AddDate(-1, 0, 0),
 		LastComment: time.Now().AddDate(-1, 0, 0),
+		LastLink: time.Now().AddDate(-1, 0, 0),
 		Stats: Stats{
 			Comments: 0,
 			Favorite: 0,
 			Follow:   0,
 			Ignore:   0,
+			Links:    0,
 			Retweets: 0,
 		},
 	}
@@ -91,6 +97,7 @@ type Context struct {
 	Client      *twitter.Client
 	LastRetweet time.Time
 	LastComment time.Time
+	LastLink time.Time
 	Stats       Stats
 }
 
@@ -99,13 +106,14 @@ type Stats struct {
 	Comments int32
 	Favorite int32
 	Follow   int32
+	Links    int32
 	Ignore   int32
 }
 
 func logStats(context *Context) {
 	log.Printf(
-		"Stats { Retweets: %d, Comments: %d, Favorite: %d, Follow: %d, Ignore: %d }",
-		context.Stats.Retweets, context.Stats.Comments, context.Stats.Favorite, context.Stats.Follow, context.Stats.Ignore)
+		"Stats { Retweets: %d, Comments: %d, Favorite: %d, Follow: %d, Links: %d, Ignore: %d }",
+		context.Stats.Retweets, context.Stats.Comments, context.Stats.Favorite, context.Stats.Follow, context.Stats.Links, context.Stats.Ignore)
 }
 
 func handleTweet(tweet *twitter.Tweet, context *Context) {
@@ -115,6 +123,12 @@ func handleTweet(tweet *twitter.Tweet, context *Context) {
 	}
 	if tweet.InReplyToStatusID != 0 {
 		context.Stats.Ignore += 1
+		return
+	}
+
+	tweetUrls := getUrls(tweet)
+	if len(tweetUrls) > 1 {
+		postLink(tweetUrls[0], context)
 		return
 	}
 
@@ -184,6 +198,42 @@ func follow(tweet *twitter.Tweet, context *Context) {
 		UserID:     tweet.User.ID,
 		ScreenName: tweet.User.ScreenName,
 	})
+}
+
+func getUrls(tweet *twitter.Tweet) []string {
+	return xurls.Relaxed().FindAllString(tweet.Text, -1)
+}
+
+func postLink(url string, context *Context) {
+	duration := time.Since(context.LastLink)
+	// 15min + random between 0 and 20min
+	if duration.Minutes() >= (10 + rand.Float64()*20) {
+		title := getTitle(url)
+
+		context.Stats.Links += 1
+		status := fmt.Sprintf("%s\n%s #blockchain", title, url)
+		context.Client.Statuses.Update(status, &twitter.StatusUpdateParams{})
+	}
+}
+
+type Html struct {
+	Head Head `xml:"head"`
+}
+
+type Head struct {
+	Title string `xml:"title"`
+}
+
+func getTitle(url string) string {
+	response, _ := http.Get(url)
+
+	defer response.Body.Close()
+	body, _ := ioutil.ReadAll(response.Body)
+
+	var html Html
+	xml.Unmarshal([]byte(body), &html)
+
+	return html.Head.Title
 }
 
 func stripFollowees(context *Context) {
