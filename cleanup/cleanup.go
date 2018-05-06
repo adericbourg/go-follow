@@ -46,7 +46,7 @@ func cleanupTweets(client *twitter.Client) {
 			removed += 1
 		}
 	}
-	log.Printf("Remmoved %d tweets", removed)
+	log.Printf("Removed %d tweets", removed)
 }
 
 func cleanupFriends(client *twitter.Client) {
@@ -65,7 +65,7 @@ func cleanupFriends(client *twitter.Client) {
 			removed += 1
 		}
 	}
-	log.Printf("Remmoved %d friends", removed)
+	log.Printf("Removed %d friends", removed)
 }
 
 func cleanupFavorites(client *twitter.Client) {
@@ -83,5 +83,5 @@ func cleanupFavorites(client *twitter.Client) {
 			removed += 1
 		}
 	}
-	log.Printf("Remmoved %d favorites", removed)
+	log.Printf("Removed %d favorites", removed)
 }
