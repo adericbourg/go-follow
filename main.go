@@ -76,11 +76,11 @@ func main() {
 	log.Println("Starting stream processing")
 	demux.HandleChan(stream.Messages)
 
-	// Wait for SIGINT and SIGTERM
-	ch := make(chan os.Signal)
-	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	fmt.Printf("Press [enter] to quit")
+	reader := bufio.NewReader(os.Stdin)
+	input, _ := reader.ReadString('\n')
 
-	log.Println("Exiting")
+	log.Printf("Received '%s'. Exiting)", input)
 	stream.Stop()
 }
 
