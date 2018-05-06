@@ -5,8 +5,6 @@ import (
 	"os"
 	"github.com/dghubble/go-twitter/twitter"
 	"github.com/dghubble/oauth1"
-	"os/signal"
-	"syscall"
 	"log"
 	"strings"
 	"math/rand"
@@ -15,6 +13,7 @@ import (
 	"encoding/xml"
 	"net/http"
 	"io/ioutil"
+	"bufio"
 )
 
 func main() {
@@ -208,8 +207,8 @@ func favorite(tweet *twitter.Tweet, context *Context) {
 
 func follow(tweet *twitter.Tweet, context *Context) {
 	duration := time.Since(context.LastFollow)
-	// 5min + random between 0 and 20min
-	if duration.Minutes() >= (5 + rand.Float64()*20) {
+	// 4h + random between 0 and 20h
+	if duration.Hours() >= (4 + rand.Float64()*20) {
 		context.Stats.Follow += 1
 		context.Client.Friendships.Create(&twitter.FriendshipCreateParams{
 			UserID:     tweet.User.ID,
