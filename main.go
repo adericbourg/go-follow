@@ -39,7 +39,7 @@ func main() {
 		panic("Failed to build stream")
 	}
 
-	currentUser, _, _ := client.Accounts.VerifyCredentials(&twitter.AccountVerifyParams{})
+	currentUser := getCurrentUser(client)
 
 	context := Context{
 		Client:      client,
@@ -118,6 +118,12 @@ func logStats(context *Context) {
 	log.Printf(
 		"Stats { Retweets: %d, Comments: %d, Favorite: %d, Follow: %d, Links: %d, Ignore: %d }",
 		context.Stats.Retweets, context.Stats.Comments, context.Stats.Favorite, context.Stats.Follow, context.Stats.Links, context.Stats.Ignore)
+}
+
+func getCurrentUser(client *twitter.Client) *twitter.User {
+	currentUser, _, _ := client.Accounts.VerifyCredentials(&twitter.AccountVerifyParams{})
+
+	return currentUser
 }
 
 func handleTweet(tweet *twitter.Tweet, context *Context) {
