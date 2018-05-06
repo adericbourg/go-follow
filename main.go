@@ -47,6 +47,7 @@ func main() {
 		LastRetweet: time.Now().AddDate(-1, 0, 0),
 		LastComment: time.Now().AddDate(-1, 0, 0),
 		LastLink:    time.Now().AddDate(-1, 0, 0),
+		LastFollow:  time.Now().AddDate(-1, 0, 0),
 		Stats: Stats{
 			Comments: 0,
 			Favorite: 0,
@@ -102,6 +103,7 @@ type Context struct {
 	LastRetweet time.Time
 	LastComment time.Time
 	LastLink    time.Time
+	LastFollow  time.Time
 	Stats       Stats
 }
 
@@ -202,11 +204,16 @@ func favorite(tweet *twitter.Tweet, context *Context) {
 }
 
 func follow(tweet *twitter.Tweet, context *Context) {
-	context.Stats.Follow += 1
-	context.Client.Friendships.Create(&twitter.FriendshipCreateParams{
-		UserID:     tweet.User.ID,
-		ScreenName: tweet.User.ScreenName,
-	})
+	duration := time.Since(context.LastFollow)
+	// 5min + random between 0 and 20min
+	if duration.Minutes() >= (5 + rand.Float64()*20) {
+		context.Stats.Follow += 1
+		context.Client.Friendships.Create(&twitter.FriendshipCreateParams{
+			UserID:     tweet.User.ID,
+			ScreenName: tweet.User.ScreenName,
+		})
+		context.LastFollow = time.Now()
+	}
 }
 
 func getUrls(tweet *twitter.Tweet) []string {
