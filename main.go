@@ -222,7 +222,7 @@ func getUrls(tweet *twitter.Tweet) []string {
 
 func postLink(url string, context *Context) {
 	duration := time.Since(context.LastLink)
-	// 15min + random between 0 and 20min
+	// 10min + random between 0 and 20min
 	if duration.Minutes() >= (10 + rand.Float64()*20) {
 		title := getTitle(url)
 
