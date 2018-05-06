@@ -126,6 +126,13 @@ func getCurrentUser(client *twitter.Client) *twitter.User {
 	return currentUser
 }
 
+var TweetHandlers = []func(*twitter.Tweet, *Context){
+	retweet,
+	comment,
+	favorite,
+	follow,
+}
+
 func handleTweet(tweet *twitter.Tweet, context *Context) {
 	if tweet.User.ID == context.User.ID {
 		return
@@ -145,19 +152,8 @@ func handleTweet(tweet *twitter.Tweet, context *Context) {
 		return
 	}
 
-	processId := rand.Intn(4)
-	switch  processId {
-	case 0:
-		retweet(tweet, context)
-	case 1:
-		comment(tweet, context)
-	case 2:
-		favorite(tweet, context)
-	case 3:
-		follow(tweet, context)
-	default:
-		favorite(tweet, context)
-	}
+	handler := TweetHandlers[rand.Intn(len(TweetHandlers))]
+	handler(tweet, context)
 }
 
 func retweet(tweet *twitter.Tweet, context *Context) {
