@@ -261,9 +261,24 @@ func stripFollowees(context *Context) {
 }
 
 func countFollowers(context *Context) int {
-	// fixme Handle pages
-	followers, _, _ := context.Client.Followers.IDs(&twitter.FollowerIDParams{})
-	return len(followers.IDs)
+	total := 0
+	var cursor int64 = -1
+	for {
+		followers, _, _ := context.Client.Followers.IDs(&twitter.FollowerIDParams{
+			Cursor: cursor,
+		})
+		ids := followers.IDs
+		count := len(ids)
+		cursor = followers.NextCursor
+
+		total += count
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	return total
 }
 
 func shuffle(slice []int64) {
