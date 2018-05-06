@@ -39,7 +39,10 @@ func main() {
 		panic("Failed to build stream")
 	}
 
-	currentUser := getCurrentUser(client)
+	currentUser, err := getCurrentUser(client)
+	if err != nil {
+		panic(fmt.Sprintf("Failed to fetch current user (%s)", err))
+	}
 
 	context := Context{
 		Client:      client,
@@ -122,10 +125,10 @@ func logStats(context *Context) {
 		context.Stats.Retweets, context.Stats.Comments, context.Stats.Favorite, context.Stats.Follow, context.Stats.Links, context.Stats.Ignore)
 }
 
-func getCurrentUser(client *twitter.Client) *twitter.User {
-	currentUser, _, _ := client.Accounts.VerifyCredentials(&twitter.AccountVerifyParams{})
+func getCurrentUser(client *twitter.Client) (*twitter.User, error) {
+	currentUser, _, err := client.Accounts.VerifyCredentials(&twitter.AccountVerifyParams{})
 
-	return currentUser
+	return currentUser, err
 }
 
 var TweetHandlers = []func(*twitter.Tweet, *Context){
@@ -224,7 +227,11 @@ func postLink(url string, context *Context) {
 	duration := time.Since(context.LastLink)
 	// 10min + random between 0 and 20min
 	if duration.Minutes() >= (10 + rand.Float64()*20) {
-		title := getTitle(url)
+		title, err := getTitle(url)
+
+		if err != nil {
+			return
+		}
 
 		context.Stats.Links += 1
 		status := fmt.Sprintf("%s\n%s #blockchain", title, url)
@@ -241,8 +248,12 @@ type Head struct {
 	Title string `xml:"title"`
 }
 
-func getTitle(url string) string {
-	response, _ := http.Get(url)
+func getTitle(url string) (string, error) {
+	response, err := http.Get(url)
+
+	if err != nil {
+		return "", err
+	}
 
 	defer response.Body.Close()
 	body, _ := ioutil.ReadAll(response.Body)
@@ -250,11 +261,16 @@ func getTitle(url string) string {
 	var html Html
 	xml.Unmarshal([]byte(body), &html)
 
-	return html.Head.Title
+	return html.Head.Title, nil
 }
 
 func pruneFriends(context *Context) {
-	pruneCountTarget := computePruneTarget(context)
+	pruneCountTarget, err := computePruneTarget(context)
+
+	if err != nil {
+		log.Printf("Unable to compute prune target. Abort.")
+		return
+	}
 
 	pruned := 0
 	var cursor int64 = -1
@@ -286,8 +302,12 @@ TheEnd:
 
 }
 
-func computePruneTarget(context *Context) int {
-	user := getCurrentUser(context.Client)
+func computePruneTarget(context *Context) (int, error) {
+	user, err := getCurrentUser(context.Client)
+
+	if err != nil {
+		return 0, err
+	}
 
 	followerCount := user.FollowersCount
 	friendsCount := user.FriendsCount
@@ -296,7 +316,7 @@ func computePruneTarget(context *Context) int {
 
 	pruneCountTarget := int(float32(friendsCount-followerCount) * pruneRatio)
 
-	return pruneCountTarget
+	return pruneCountTarget, nil
 }
 
 func shuffle(slice []int64) {
