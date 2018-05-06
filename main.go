@@ -62,7 +62,7 @@ func main() {
 	})
 
 	go scheduleEvery(30*time.Minute, func(t time.Time) {
-		stripFollowees(&context)
+		pruneFriends(&context)
 	})
 
 	demux := twitter.NewSwitchDemux()
@@ -250,41 +250,50 @@ func getTitle(url string) string {
 	return html.Head.Title
 }
 
-func stripFollowees(context *Context) {
-	followerCount := countFollowers(context)
+func pruneFriends(context *Context) {
+	pruneCountTarget := computePruneTarget(context)
 
-	// fixme Handle pages
-	friends, _, _ := context.Client.Friends.IDs(&twitter.FriendIDParams{})
-	friendIds := friends.IDs
-
-	shuffle(friendIds)
-
-	for i := 0; i < len(friendIds)-followerCount; i++ {
-		context.Client.Friendships.Destroy(&twitter.FriendshipDestroyParams{
-			UserID: friendIds[i],
-		})
-	}
-}
-
-func countFollowers(context *Context) int {
-	total := 0
+	pruned := 0
 	var cursor int64 = -1
 	for {
-		followers, _, _ := context.Client.Followers.IDs(&twitter.FollowerIDParams{
+		friends, _, _ := context.Client.Friends.IDs(&twitter.FriendIDParams{
 			Cursor: cursor,
 		})
-		ids := followers.IDs
-		count := len(ids)
-		cursor = followers.NextCursor
+		cursor = friends.NextCursor
 
-		total += count
+		friendIds := friends.IDs
+		shuffle(friendIds)
+
+		for _, friendId := range friendIds {
+			context.Client.Friendships.Destroy(&twitter.FriendshipDestroyParams{
+				UserID: friendId,
+			})
+			pruned += 1
+			if pruned >= pruneCountTarget {
+				goto TheEnd
+			}
+		}
 
 		if cursor == 0 {
-			break
+			goto TheEnd
 		}
 	}
+TheEnd:
+	log.Printf("Pruned %d friends (out of a %d target)", pruned, pruneCountTarget)
 
-	return total
+}
+
+func computePruneTarget(context *Context) int {
+	user := getCurrentUser(context.Client)
+
+	followerCount := user.FollowersCount
+	friendsCount := user.FriendsCount
+
+	const pruneRatio float32 = 1.1
+
+	pruneCountTarget := int(float32(friendsCount-followerCount) * pruneRatio)
+
+	return pruneCountTarget
 }
 
 func shuffle(slice []int64) {
