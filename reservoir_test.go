@@ -17,7 +17,7 @@ func Test_CreateReservoir_should_create_an_empty_reservoir(t *testing.T) {
 func Test_Increment_should_add_a_measurement(t *testing.T) {
 	reservoir := CreateReservoir()
 
-	increment(reservoir)
+	reservoir.Increment()
 
 	assert.Equal(t, 1, len(reservoir.Measurements))
 	for key := range reservoir.Measurements {
@@ -28,21 +28,21 @@ func Test_Increment_should_add_a_measurement(t *testing.T) {
 func Test_GetMeasurements_should_provide_map_values(t *testing.T) {
 	reservoir := CreateReservoir()
 
-	increment(reservoir)
-	increment(reservoir)
+	reservoir.Increment()
+	reservoir.Increment()
 
-	measurements := GetMeasurements(reservoir)
+	measurements := reservoir.GetMeasurements()
 	assert.Equal(t, []int64{1, 1}, measurements)
 }
 
 func Test_Sum_should_sum_all_values(t *testing.T) {
 	reservoir := CreateReservoir()
 
-	increment(reservoir)
-	increment(reservoir)
-	increment(reservoir)
+	reservoir.Increment()
+	reservoir.Increment()
+	reservoir.Increment()
 
-	sum := Sum(reservoir)
+	sum := reservoir.Sum()
 	assert.Equal(t, int64(3), sum)
 }
 
@@ -54,12 +54,12 @@ func Test_concurrency(t *testing.T) {
 	wg.Add(iterations)
 	for i := 0; i < iterations; i++ {
 		go func() {
-			increment(reservoir)
+			reservoir.Increment()
 			defer wg.Done()
 		}()
 	}
 	wg.Wait()
 
-	sum := Sum(reservoir)
+	sum := reservoir.Sum()
 	assert.Equal(t, int64(iterations), sum)
 }

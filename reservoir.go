@@ -20,14 +20,14 @@ func CreateReservoir() *Reservoir {
 	}
 }
 
-func increment(reservoir *Reservoir) {
+func (reservoir *Reservoir) Increment() {
 	reservoir.Count += 1
 	if reservoir.Count%ReservoirTrimThreshold == 0 {
-		trim(reservoir)
+		reservoir.trim()
 	}
 
 	key := time.Now()
-	Synchronized(reservoir, func() {
+	reservoir.synchronized(func() {
 		value, exists := reservoir.Measurements[key]
 		if exists {
 			reservoir.Measurements[key] = value + 1
@@ -37,8 +37,8 @@ func increment(reservoir *Reservoir) {
 	})
 }
 
-func trim(reservoir *Reservoir) *Reservoir {
-	Synchronized(reservoir, func() {
+func (reservoir *Reservoir) trim() {
+	reservoir.synchronized(func() {
 		var keys []time.Time
 
 		for k := range reservoir.Measurements {
@@ -50,12 +50,12 @@ func trim(reservoir *Reservoir) *Reservoir {
 			}
 		}
 	})
-	return reservoir
 }
 
-func GetMeasurements(reservoir *Reservoir) []int64 {
+func (reservoir *Reservoir) GetMeasurements() []int64 {
 	var values []int64
-	measurements := trim(reservoir).Measurements
+	reservoir.trim()
+	measurements := reservoir.Measurements
 
 	for key := range measurements {
 		values = append(values, measurements[key])
@@ -64,15 +64,15 @@ func GetMeasurements(reservoir *Reservoir) []int64 {
 	return values
 }
 
-func Sum(reservoir *Reservoir) int64 {
+func (reservoir *Reservoir) Sum() int64 {
 	sum := int64(0)
-	for _, v := range GetMeasurements(reservoir) {
+	for _, v := range reservoir.GetMeasurements() {
 		sum += v
 	}
 	return sum
 }
 
-func Synchronized(reservoir *Reservoir, f func()) {
+func (reservoir *Reservoir) synchronized(f func()) {
 	reservoir.Mutex.Lock()
 	f()
 	reservoir.Mutex.Unlock()
