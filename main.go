@@ -51,6 +51,13 @@ func main() {
 		LastLink:    time.Now().AddDate(-1, 0, 0),
 		LastFollow:  time.Now().AddDate(-1, 0, 0),
 		Stats:       Stats{},
+		Rates: Rates{
+			Follow:   CreateReservoir(),
+			Favorite: CreateReservoir(),
+			Status:   CreateReservoir(),
+			Retweet:  CreateReservoir(),
+			Unfollow: CreateReservoir(),
+		},
 	}
 
 	go scheduleEvery(30*time.Second, func(t time.Time) {
@@ -100,6 +107,7 @@ type Context struct {
 	LastLink    time.Time
 	LastFollow  time.Time
 	Stats       Stats
+	Rates       Rates
 }
 
 type Stats struct {
@@ -109,6 +117,14 @@ type Stats struct {
 	Follow   int32
 	Links    int32
 	Ignore   int32
+}
+
+type Rates struct {
+	Retweet  *Reservoir
+	Status   *Reservoir
+	Favorite *Reservoir
+	Follow   *Reservoir
+	Unfollow *Reservoir
 }
 
 func logStats(context *Context) {
@@ -162,6 +178,7 @@ func retweet(tweet *twitter.Tweet, context *Context) {
 			ID: tweet.ID,
 		})
 		context.LastRetweet = time.Now()
+		context.Rates.Retweet.Increment()
 	}
 }
 
@@ -188,6 +205,7 @@ func comment(tweet *twitter.Tweet, context *Context) {
 			InReplyToStatusID: tweet.ID,
 		})
 		context.LastComment = time.Now()
+		context.Rates.Status.Increment()
 	}
 }
 
@@ -196,6 +214,7 @@ func favorite(tweet *twitter.Tweet, context *Context) {
 	context.Client.Favorites.Create(&twitter.FavoriteCreateParams{
 		ID: tweet.ID,
 	})
+	context.Rates.Favorite.Increment()
 }
 
 func follow(tweet *twitter.Tweet, context *Context) {
@@ -208,6 +227,7 @@ func follow(tweet *twitter.Tweet, context *Context) {
 			ScreenName: tweet.User.ScreenName,
 		})
 		context.LastFollow = time.Now()
+		context.Rates.Follow.Increment()
 	}
 }
 
@@ -229,6 +249,7 @@ func postLink(url string, context *Context) {
 		status := fmt.Sprintf("%s\n%s #blockchain", title, url)
 		context.Client.Statuses.Update(status, &twitter.StatusUpdateParams{})
 		context.LastLink = time.Now()
+		context.Rates.Status.Increment()
 	}
 }
 
@@ -279,6 +300,7 @@ func pruneFriends(context *Context) {
 			context.Client.Friendships.Destroy(&twitter.FriendshipDestroyParams{
 				UserID: friendId,
 			})
+			context.Rates.Unfollow.Increment()
 			pruned += 1
 			if pruned >= pruneCountTarget {
 				goto TheEnd
