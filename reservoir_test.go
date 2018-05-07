@@ -3,6 +3,7 @@ package main
 import (
 	"testing"
 	"github.com/stretchr/testify/assert"
+	"sync"
 )
 
 func Test_CreateReservoir_should_create_an_empty_reservoir(t *testing.T) {
@@ -43,4 +44,22 @@ func Test_Sum_should_sum_all_values(t *testing.T) {
 
 	sum := Sum(reservoir)
 	assert.Equal(t, int64(3), sum)
+}
+
+func Test_concurrency(t *testing.T) {
+	const iterations = 1000
+	reservoir := CreateReservoir()
+
+	wg := sync.WaitGroup{}
+	wg.Add(iterations)
+	for i := 0; i < iterations; i++ {
+		go func() {
+			increment(reservoir)
+			defer wg.Done()
+		}()
+	}
+	wg.Wait()
+
+	sum := Sum(reservoir)
+	assert.Equal(t, int64(iterations), sum)
 }
