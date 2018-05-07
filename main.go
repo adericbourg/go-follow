@@ -50,14 +50,7 @@ func main() {
 		LastComment: time.Now().AddDate(-1, 0, 0),
 		LastLink:    time.Now().AddDate(-1, 0, 0),
 		LastFollow:  time.Now().AddDate(-1, 0, 0),
-		Stats: Stats{
-			Comments: 0,
-			Favorite: 0,
-			Follow:   0,
-			Ignore:   0,
-			Links:    0,
-			Retweets: 0,
-		},
+		Stats:       Stats{},
 	}
 
 	go scheduleEvery(30*time.Second, func(t time.Time) {
