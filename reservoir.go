@@ -61,11 +61,14 @@ func (reservoir *Reservoir) trim() {
 func (reservoir *Reservoir) GetMeasurements() []int64 {
 	var values []int64
 	reservoir.trim()
-	measurements := reservoir.Measurements
 
-	for key := range measurements {
-		values = append(values, measurements[key])
-	}
+	reservoir.synchronized(func() {
+		measurements := reservoir.Measurements
+
+		for key := range measurements {
+			values = append(values, measurements[key])
+		}
+	})
 
 	return values
 }
