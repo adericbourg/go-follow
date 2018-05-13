@@ -285,6 +285,7 @@ func pruneFriends(context *Context) {
 	}
 
 	pruned := 0
+	pruneTentative := 0
 	var cursor int64 = -1
 	for {
 		friends, _, _ := context.Client.Friends.IDs(&twitter.FriendIDParams{
@@ -300,9 +301,10 @@ func pruneFriends(context *Context) {
 				context.Client.Friendships.Destroy(&twitter.FriendshipDestroyParams{
 					UserID: friendId,
 				})
+				pruned += 1
 			})
-			pruned += 1
-			if pruned >= pruneCountTarget {
+			pruneTentative += 1
+			if pruneTentative >= pruneCountTarget {
 				goto TheEnd
 			}
 		}
