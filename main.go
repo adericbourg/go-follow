@@ -296,7 +296,7 @@ func pruneFriends(context *Context) {
 		shuffle(friendIds)
 
 		for _, friendId := range friendIds {
-			context.Rates.Status.Submit(func() {
+			context.Rates.Unfollow.Submit(func() {
 				context.Client.Friendships.Destroy(&twitter.FriendshipDestroyParams{
 					UserID: friendId,
 				})
