@@ -128,9 +128,7 @@ type Rates struct {
 }
 
 func logStats(context *Context) {
-	log.Printf(
-		"Stats { Retweets: %d, Comments: %d, Favorite: %d, Follow: %d, Links: %d, Ignore: %d }",
-		context.Stats.Retweets, context.Stats.Comments, context.Stats.Favorite, context.Stats.Follow, context.Stats.Links, context.Stats.Ignore)
+	log.Printf("Stats %+v", context.Stats)
 }
 
 func getCurrentUser(client *twitter.Client) (*twitter.User, error) {
