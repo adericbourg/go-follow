@@ -10,12 +10,18 @@ const ReservoirTrimThreshold = 10
 type Reservoir struct {
 	Measurements map[time.Time]int64
 	Count        int
+	TimeWindow   time.Duration
 	Mutex        *sync.Mutex
 }
 
-func CreateReservoir() *Reservoir {
+func CreateDefaultReservoir() *Reservoir {
+	return CreateReservoir(time.Hour)
+}
+
+func CreateReservoir(timeWindow time.Duration) *Reservoir {
 	return &Reservoir{
 		Measurements: make(map[time.Time]int64),
+		TimeWindow:   timeWindow,
 		Mutex:        &sync.Mutex{},
 	}
 }
@@ -45,7 +51,7 @@ func (reservoir *Reservoir) trim() {
 			keys = append(keys, k)
 		}
 		for _, key := range keys {
-			if time.Since(key) > time.Hour {
+			if time.Since(key) > reservoir.TimeWindow {
 				delete(reservoir.Measurements, key)
 			}
 		}

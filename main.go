@@ -52,11 +52,11 @@ func main() {
 		LastFollow:  time.Now().AddDate(-1, 0, 0),
 		Stats:       Stats{},
 		Rates: Rates{
-			Follow:   CreateReservoir(),
-			Favorite: CreateReservoir(),
-			Status:   CreateReservoir(),
-			Retweet:  CreateReservoir(),
-			Unfollow: CreateReservoir(),
+			Follow:   CreateDefaultReservoir(),
+			Favorite: CreateDefaultReservoir(),
+			Status:   CreateDefaultReservoir(),
+			Retweet:  CreateDefaultReservoir(),
+			Unfollow: CreateDefaultReservoir(),
 		},
 	}
 
