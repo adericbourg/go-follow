@@ -52,19 +52,19 @@ func main() {
 		LastFollow:  time.Now().AddDate(-1, 0, 0),
 		Stats:       Stats{},
 		Rates: Rates{
-			Follow:   CreateDefaultReservoir(),
-			Favorite: CreateDefaultReservoir(),
-			Status:   CreateDefaultReservoir(),
-			Retweet:  CreateDefaultReservoir(),
-			Unfollow: CreateDefaultReservoir(),
+			Follow:   CreateRateLimiter(2, time.Hour),
+			Favorite: CreateRateLimiter(1, time.Minute*5),
+			Status:   CreateRateLimiter(1, time.Minute*5),
+			Retweet:  CreateRateLimiter(1, time.Minute*5),
+			Unfollow: CreateRateLimiter(3, time.Hour),
 		},
 	}
 
-	go scheduleEvery(30*time.Second, func(t time.Time) {
+	go scheduleEvery(time.Minute, func(t time.Time) {
 		logStats(&context)
 	})
 
-	go scheduleEvery(30*time.Minute, func(t time.Time) {
+	go scheduleEvery(time.Hour, func(t time.Time) {
 		pruneFriends(&context)
 	})
 
@@ -120,11 +120,11 @@ type Stats struct {
 }
 
 type Rates struct {
-	Retweet  *Reservoir
-	Status   *Reservoir
-	Favorite *Reservoir
-	Follow   *Reservoir
-	Unfollow *Reservoir
+	Retweet  *RateLimiter
+	Status   *RateLimiter
+	Favorite *RateLimiter
+	Follow   *RateLimiter
+	Unfollow *RateLimiter
 }
 
 func logStats(context *Context) {
@@ -170,16 +170,13 @@ func handleTweet(tweet *twitter.Tweet, context *Context) {
 }
 
 func retweet(tweet *twitter.Tweet, context *Context) {
-	duration := time.Since(context.LastRetweet)
-	// 10min + random between 0 and 20min
-	if duration.Minutes() >= (10 + rand.Float64()*20) {
+	context.Rates.Retweet.Submit(func() {
 		context.Stats.Retweets += 1
 		context.Client.Statuses.Retweet(tweet.ID, &twitter.StatusRetweetParams{
 			ID: tweet.ID,
 		})
 		context.LastRetweet = time.Now()
-		context.Rates.Retweet.Increment()
-	}
+	})
 }
 
 var Comments = []string{
@@ -195,40 +192,34 @@ var Comments = []string{
 }
 
 func comment(tweet *twitter.Tweet, context *Context) {
-	duration := time.Since(context.LastComment)
-
-	// 10min + random between 0 and 5min
-	if duration.Minutes() >= (10 + rand.Float64()*5) {
+	context.Rates.Status.Submit(func() {
 		context.Stats.Comments += 1
 		comment := fmt.Sprintf("@%s %s", tweet.User.ScreenName, Comments[ rand.Intn(len(Comments))])
 		context.Client.Statuses.Update(comment, &twitter.StatusUpdateParams{
 			InReplyToStatusID: tweet.ID,
 		})
 		context.LastComment = time.Now()
-		context.Rates.Status.Increment()
-	}
+	})
 }
 
 func favorite(tweet *twitter.Tweet, context *Context) {
-	context.Stats.Favorite += 1
-	context.Client.Favorites.Create(&twitter.FavoriteCreateParams{
-		ID: tweet.ID,
+	context.Rates.Favorite.Submit(func() {
+		context.Stats.Favorite += 1
+		context.Client.Favorites.Create(&twitter.FavoriteCreateParams{
+			ID: tweet.ID,
+		})
 	})
-	context.Rates.Favorite.Increment()
 }
 
 func follow(tweet *twitter.Tweet, context *Context) {
-	duration := time.Since(context.LastFollow)
-	// 4h + random between 0 and 20h
-	if duration.Hours() >= (4 + rand.Float64()*20) {
+	context.Rates.Follow.Submit(func() {
 		context.Stats.Follow += 1
 		context.Client.Friendships.Create(&twitter.FriendshipCreateParams{
 			UserID:     tweet.User.ID,
 			ScreenName: tweet.User.ScreenName,
 		})
 		context.LastFollow = time.Now()
-		context.Rates.Follow.Increment()
-	}
+	})
 }
 
 func getUrls(tweet *twitter.Tweet) []string {
@@ -236,9 +227,7 @@ func getUrls(tweet *twitter.Tweet) []string {
 }
 
 func postLink(url string, context *Context) {
-	duration := time.Since(context.LastLink)
-	// 10min + random between 0 and 20min
-	if duration.Minutes() >= (10 + rand.Float64()*20) {
+	context.Rates.Status.Submit(func() {
 		title, err := getTitle(url)
 
 		if err != nil {
@@ -249,8 +238,7 @@ func postLink(url string, context *Context) {
 		status := fmt.Sprintf("%s\n%s #blockchain", title, url)
 		context.Client.Statuses.Update(status, &twitter.StatusUpdateParams{})
 		context.LastLink = time.Now()
-		context.Rates.Status.Increment()
-	}
+	})
 }
 
 type Html struct {
@@ -297,10 +285,11 @@ func pruneFriends(context *Context) {
 		shuffle(friendIds)
 
 		for _, friendId := range friendIds {
-			context.Client.Friendships.Destroy(&twitter.FriendshipDestroyParams{
-				UserID: friendId,
+			context.Rates.Status.Submit(func() {
+				context.Client.Friendships.Destroy(&twitter.FriendshipDestroyParams{
+					UserID: friendId,
+				})
 			})
-			context.Rates.Unfollow.Increment()
 			pruned += 1
 			if pruned >= pruneCountTarget {
 				goto TheEnd
