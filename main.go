@@ -128,7 +128,20 @@ type Rates struct {
 }
 
 func logStats(context *Context) {
-	log.Printf("Stats %+v", context.Stats)
+	log.Printf("Stats %+v\n", context.Stats)
+
+	log.Println(" == Rates ==")
+	logRate("Retweets ", context.Rates.Retweet)
+	logRate("Status   ", context.Rates.Status)
+	logRate("Favorite ", context.Rates.Favorite)
+	logRate("Follow   ", context.Rates.Follow)
+	logRate("Unfollow ", context.Rates.Unfollow)
+
+	log.Println()
+}
+
+func logRate(label string, rateLimiter *RateLimiter) {
+	log.Printf("  %s: %d / %d (%s)\n", label, rateLimiter.reservoir.Sum(), rateLimiter.threshold, rateLimiter.reservoir.TimeWindow)
 }
 
 func getCurrentUser(client *twitter.Client) (*twitter.User, error) {
