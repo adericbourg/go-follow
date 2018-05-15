@@ -14,6 +14,7 @@ import (
 	"net/http"
 	"io/ioutil"
 	"bufio"
+	"math"
 )
 
 func main() {
@@ -326,11 +327,15 @@ func computePruneTarget(context *Context) (int, error) {
 	}
 
 	followerCount := user.FollowersCount
+	tweetCount := user.StatusesCount
+
+	maxFriends := int(math.Min(float64(followerCount), float64(tweetCount)))
+
 	friendsCount := user.FriendsCount
 
-	const pruneRatio float32 = 1.1
+	const pruneRatio = 1.1
 
-	pruneCountTarget := int(float32(friendsCount-followerCount) * pruneRatio)
+	pruneCountTarget := int(math.Max(0.0, float64(friendsCount-maxFriends)*pruneRatio))
 
 	return pruneCountTarget, nil
 }
