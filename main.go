@@ -330,12 +330,16 @@ func computePruneTarget(context *Context) (int, error) {
 		return 0, err
 	}
 
+	friendsCount := user.FriendsCount
+
 	followerCount := user.FollowersCount
 	tweetCount := user.StatusesCount
 
-	maxFriends := int(math.Min(float64(followerCount), float64(tweetCount)))
+	if friendsCount < followerCount/2 {
+		return 0, nil
+	}
 
-	friendsCount := user.FriendsCount
+	maxFriends := int(math.Min(float64(followerCount), float64(tweetCount)))
 
 	const pruneRatio = 1.1
 
