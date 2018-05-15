@@ -287,6 +287,7 @@ func pruneFriends(context *Context) {
 
 	if pruneCountTarget == 0 {
 		log.Printf("No friend to prune")
+		return
 	}
 
 	pruned := 0
