@@ -15,6 +15,7 @@ import (
 	"io/ioutil"
 	"bufio"
 	"math"
+	"errors"
 )
 
 func main() {
@@ -152,8 +153,10 @@ func logRate(label string, rateLimiter *RateLimiter) {
 }
 
 func getCurrentUser(client *twitter.Client) (*twitter.User, error) {
-	currentUser, _, err := client.Accounts.VerifyCredentials(&twitter.AccountVerifyParams{})
-
+	currentUser, status, err := client.Accounts.VerifyCredentials(&twitter.AccountVerifyParams{})
+	if status.StatusCode >= 400 {
+		return nil, errors.New(status.Status)
+	}
 	return currentUser, err
 }
 
@@ -189,10 +192,13 @@ func handleTweet(tweet *twitter.Tweet, context *Context) {
 
 func retweet(tweet *twitter.Tweet, context *Context) {
 	context.Rates.Retweet.Submit(func() {
-		context.Stats.Retweets += 1
-		context.Client.Statuses.Retweet(tweet.ID, &twitter.StatusRetweetParams{
+		_, status, _ := context.Client.Statuses.Retweet(tweet.ID, &twitter.StatusRetweetParams{
 			ID: tweet.ID,
 		})
+		if status.StatusCode >= 400 {
+			log.Printf("Failed to retweet: got status '%s'", status.Status)
+		}
+		context.Stats.Retweets += 1
 		context.LastRetweet = time.Now()
 	})
 }
@@ -211,31 +217,41 @@ var Comments = []string{
 
 func comment(tweet *twitter.Tweet, context *Context) {
 	context.Rates.Status.Submit(func() {
-		context.Stats.Comments += 1
+
 		comment := fmt.Sprintf("@%s %s", tweet.User.ScreenName, Comments[ rand.Intn(len(Comments))])
-		context.Client.Statuses.Update(comment, &twitter.StatusUpdateParams{
+		_, status, _ := context.Client.Statuses.Update(comment, &twitter.StatusUpdateParams{
 			InReplyToStatusID: tweet.ID,
 		})
+		if status.StatusCode >= 400 {
+			log.Printf("Failed to comment: got status '%s'", status.Status)
+		}
+		context.Stats.Comments += 1
 		context.LastComment = time.Now()
 	})
 }
 
 func favorite(tweet *twitter.Tweet, context *Context) {
 	context.Rates.Favorite.Submit(func() {
-		context.Stats.Favorite += 1
-		context.Client.Favorites.Create(&twitter.FavoriteCreateParams{
+		_, status, _ := context.Client.Favorites.Create(&twitter.FavoriteCreateParams{
 			ID: tweet.ID,
 		})
+		if status.StatusCode >= 400 {
+			log.Printf("Failed to favorite: got status '%s'", status.Status)
+		}
+		context.Stats.Favorite += 1
 	})
 }
 
 func follow(tweet *twitter.Tweet, context *Context) {
 	context.Rates.Follow.Submit(func() {
-		context.Stats.Follow += 1
-		context.Client.Friendships.Create(&twitter.FriendshipCreateParams{
+		_, status, _ := context.Client.Friendships.Create(&twitter.FriendshipCreateParams{
 			UserID:     tweet.User.ID,
 			ScreenName: tweet.User.ScreenName,
 		})
+		if status.StatusCode >= 400 {
+			log.Printf("Failed to follow: got status '%s'", status.Status)
+		}
+		context.Stats.Follow += 1
 		context.LastFollow = time.Now()
 	})
 }
