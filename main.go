@@ -43,6 +43,7 @@ func main() {
 	if err != nil {
 		panic(fmt.Sprintf("Failed to fetch current user (%s)", err))
 	}
+	logIdentification(currentUser)
 
 	context := Context{
 		Client:      client,
@@ -83,6 +84,11 @@ func main() {
 
 	log.Printf("Received '%s'. Exiting)", input)
 	stream.Stop()
+}
+func logIdentification(user *twitter.User) {
+	log.Println("******")
+	log.Printf("* Authenticated as '%s'", user.ScreenName)
+	log.Println("******")
 }
 
 func getenv(key string) string {
